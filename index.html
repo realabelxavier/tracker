@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Crypto Tracker</title>
+<meta name="theme-color" content="#121318">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crypto">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{--bg-color:#121318;--card-bg:#1a1c23;--text-main:#f0f2f5;--text-muted:#8a8d9b;--accent-green:#00d26a;--accent-red:#f8312f;--accent-blue:#2f80ed;--border-color:#272a36}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg-color);color:var(--text-main);max-width:650px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 12px calc(28px + env(safe-area-inset-bottom))}
+.header-card{background:linear-gradient(145deg,#1d202b,#161821);border:1px solid var(--border-color);border-radius:16px;padding:20px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4);margin-bottom:20px}
+.header-card h2{font-size:.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.total-value{font-size:2.2rem;font-weight:700;letter-spacing:-.5px}
+.status-bar{margin-top:8px;font-size:.75rem;color:var(--text-muted);display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap}
+.status-dot{width:8px;height:8px;background:var(--accent-green);border-radius:50%}
+.chart-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:20px}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px}
+.chart-title{font-size:.85rem;color:var(--text-muted);font-weight:600;text-transform:uppercase}
+.chart-meta{font-size:.72rem;color:var(--text-muted);margin-top:2px}
+.btn-close{background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:6px}
+.btn-close:hover{background:var(--bg-color);color:var(--text-main)}
+.hidden{display:none!important}
+.timeframe-container{display:flex;gap:4px;background:var(--bg-color);padding:3px;border-radius:8px;border:1px solid var(--border-color);overflow-x:auto;max-width:100%}
+.tf-btn{background:none;border:none;color:var(--text-muted);font-size:.75rem;font-weight:600;padding:6px 9px;border-radius:6px;cursor:pointer;flex:none}
+.tf-btn.active{background:var(--accent-blue);color:#fff}
+.chart-wrapper{height:220px;position:relative}
+.candle-top{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;margin-bottom:10px}
+.live-price{font-size:1.5rem;font-weight:700;letter-spacing:-.3px}
+.live-badge{font-size:.7rem;color:var(--text-muted);display:flex;align-items:center;gap:5px;margin-top:2px}
+.live-badge i{width:7px;height:7px;border-radius:50%;background:#555;display:inline-block}
+.live-badge.on i{background:var(--accent-green)}
+.candle-wrapper{height:340px;position:relative;margin-top:10px}
+#candleChart{position:absolute;inset:0}
+.candle-legend{font-size:.72rem;color:var(--text-muted);min-height:1.1em;font-variant-numeric:tabular-nums;line-height:1.4}
+.candle-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:.85rem;text-align:center;padding:20px;pointer-events:none;z-index:2}
+.add-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:16px;margin-bottom:20px}
+.add-card h3{font-size:.9rem;margin-bottom:10px}
+.form-row{display:flex;gap:8px;flex-wrap:wrap}
+input,button{background:var(--bg-color);border:1px solid var(--border-color);color:var(--text-main);padding:10px 12px;border-radius:8px;font-size:1rem;outline:none}
+.search-box{flex:2 1 160px;min-width:0}
+input[type=number]{flex:1 1 90px;min-width:0}
+button.btn-add{background:var(--accent-blue);color:#fff;font-weight:600;border:none;cursor:pointer;padding:10px 18px}
+.holdings-title{font-size:.95rem;margin-bottom:10px;color:var(--text-muted);display:flex;justify-content:space-between}
+.holding-item{background:var(--card-bg);border:1px solid var(--border-color);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .2s}
+.holding-item:hover{background:#20232e}
+.holding-item.active{border-color:var(--accent-blue)}
+.coin-info{display:flex;flex-direction:column}
+.coin-name{font-weight:700}
+.coin-amount{font-size:.8rem;color:var(--text-muted)}
+.coin-value-group{text-align:right}
+.coin-total{font-weight:700}
+.coin-price{font-size:.8rem;color:var(--text-muted)}
+.action-btns{display:flex;align-items:center;gap:2px;margin-left:6px}
+.btn-action{background:none;border:none;font-size:.95rem;cursor:pointer;padding:8px;border-radius:6px}
+.btn-edit{color:var(--accent-blue)}
+.btn-delete{color:var(--accent-red)}
+.btn-action:hover{background:var(--bg-color)}
+.empty-state{text-align:center;color:var(--text-muted);padding:24px 20px;background:var(--card-bg);border:1px dashed var(--border-color);border-radius:12px;line-height:1.5}
+.install-row{text-align:center;margin-top:18px}
+.install-row button{background:var(--card-bg);color:var(--text-main);cursor:pointer}
+.install-hint{font-size:.75rem;color:var(--text-muted);margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="header-card">
+  <h2>Total Portfolio Value</h2>
+  <div class="total-value" id="totalValue">$0.00</div>
+  <div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Loading markets...</span>
+    <span id="apiMeter"></span>
+  </div>
+</div>
+
+<!-- Portfolio performance (unchanged) -->
+<div class="chart-card">
+  <div class="chart-header">
+    <span class="chart-title">Portfolio Performance</span>
+    <div class="timeframe-container">
+      <button class="tf-btn" onclick="setTimeframe('7d', this)">7D</button>
+      <button class="tf-btn active" onclick="setTimeframe('30d', this)">30D</button>
+      <button class="tf-btn" onclick="setTimeframe('6m', this)">6M</button>
+      <button class="tf-btn" onclick="setTimeframe('1y', this)">1Y</button>
+      <button class="tf-btn" onclick="setTimeframe('5y', this)">5Y</button>
+      <button class="tf-btn" onclick="setTimeframe('all', this)">ALL</button>
+    </div>
+  </div>
+  <div class="chart-wrapper"><canvas id="portfolioChart"></canvas></div>
+</div>
+
+<!-- Live candlestick chart for a held coin -->
+<div class="chart-card hidden" id="assetChartCard">
+  <div class="chart-header" style="margin-bottom:6px">
+    <div>
+      <span class="chart-title" id="assetChartTitle">Asset</span>
+      <div class="chart-meta" id="assetChartMeta"></div>
+    </div>
+    <button class="btn-close" onclick="hideAssetChart()" title="Close chart">✕</button>
+  </div>
+  <div class="candle-top">
+    <div>
+      <div class="live-price" id="livePrice">–</div>
+      <div class="live-badge" id="liveBadge"><i></i><span id="liveText">connecting</span></div>
+    </div>
+    <div class="timeframe-container" id="intervalBar"></div>
+  </div>
+  <div class="candle-legend" id="candleLegend"></div>
+  <div class="candle-wrapper">
+    <div id="candleChart"></div>
+    <div class="candle-msg" id="candleMsg"></div>
+  </div>
+</div>
+
+<div class="add-card">
+  <h3>Add Coin to Portfolio</h3>
+  <div class="form-row">
+    <input type="text" id="coinSearch" class="search-box" list="coinDatalist" placeholder="Search (e.g. SOL, DOGE, PEPE)..." autocapitalize="characters" autocomplete="off">
+    <datalist id="coinDatalist"></datalist>
+    <input type="number" id="coinAmount" placeholder="Amount" step="any" min="0" inputmode="decimal">
+    <button class="btn-add" onclick="addHolding()">Add</button>
+  </div>
+</div>
+
+<div class="holdings-title"><span>Your Assets</span><span id="assetCount">0 assets</span></div>
+<div id="holdingsList"></div>
+
+<div class="install-row">
+  <button id="installBtn" class="hidden">Install app</button>
+  <div class="install-hint hidden" id="iosHint">On iPhone: tap Share, then “Add to Home Screen”.</div>
+</div>
+
+<script>
+/* ================= State ================= */
+const STORAGE_KEY = 'crypto_portfolio_holdings_v5';   // same key as before: existing saved coins carry over
+const INTERVAL_KEY = 'crypto_candle_interval';
+const PRICES_KEY = 'crypto_last_prices';
+
+function loadHoldings() {                              // first ever launch => empty list
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(h => h && /^[A-Z0-9]{2,20}$/.test(h.pair) && /^[A-Z0-9]{1,20}$/.test(h.symbol) && h.amount > 0);
+  } catch (e) { return []; }
+}
+let holdings = loadHoldings();
+let priceMap = {};
+try { priceMap = JSON.parse(localStorage.getItem(PRICES_KEY)) || {}; } catch (e) {}
+let availablePairs = [], chartInstance = null, openAsset = null, activeTimeframe = '30d';
+
+const TIMEFRAME_CONFIGS = {
+  '7d': { interval: '1h', limit: 168 }, '30d': { interval: '1d', limit: 30 }, '6m': { interval: '1d', limit: 180 },
+  '1y': { interval: '1d', limit: 365 }, '5y': { interval: '1w', limit: 260 }, 'all': { interval: '1w', limit: 1000 }
+};
+function saveHoldings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings)); }
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask browser not to evict saved coins
+
+/* ================= API budget =================
+   Binance allows 6000 request-weight per minute per IP. klines = 2, all-ticker = 4.
+   We cap ourselves at 1200/min (20%), cache responses, de-duplicate in-flight calls,
+   honour Retry-After on 429/418, and use a WebSocket (no weight) for live candles. */
+const API_HOSTS = ['https://api.binance.com', 'https://data-api.binance.vision'];
+const WS_HOSTS = ['wss://stream.binance.com:9443', 'wss://data-stream.binance.vision'];
+const BUDGET = 1200;
+let usage = [], blockedUntil = 0, serverUsed = 0, serverUsedAt = 0, hostIdx = 0;
+const apiCache = new Map(), apiInflight = new Map();
+
+function usedWeight() { const cut = Date.now() - 60000; usage = usage.filter(u => u.t > cut); return usage.reduce((s, u) => s + u.w, 0); }
+function updateMeter() { document.getElementById('apiMeter').innerText = `· API ${usedWeight()}/${BUDGET} per min`; }
+
+async function api(path, weight, ttl = 0) {
+  const hit = apiCache.get(path);
+  if (hit && Date.now() - hit.t < ttl) return hit.data;
+  if (apiInflight.has(path)) return apiInflight.get(path);
+  const p = (async () => {
+    const now = Date.now();
+    const overServer = now - serverUsedAt < 60000 && serverUsed + weight > 4500;
+    if (now < blockedUntil || usedWeight() + weight > BUDGET || overServer) {
+      if (hit) return hit.data;                          // degrade gracefully with last known data
+      throw new Error('API budget reached, waiting');
+    }
+    usage.push({ t: now, w: weight }); updateMeter();
+    let lastErr;
+    for (let i = 0; i < API_HOSTS.length; i++) {
+      const idx = (hostIdx + i) % API_HOSTS.length;
+      try {
+        const res = await fetch(API_HOSTS[idx] + path);
+        if (res.status === 429 || res.status === 418) {
+          blockedUntil = Date.now() + (parseInt(res.headers.get('Retry-After')) || 60) * 1000;
+          throw Object.assign(new Error('Rate limited'), { stop: true });
+        }
+        const used = parseInt(res.headers.get('x-mbx-used-weight-1m'));
+        if (used) { serverUsed = used; serverUsedAt = Date.now(); }
+        if (!res.ok) throw Object.assign(new Error('HTTP ' + res.status), { stop: res.status < 500 });
+        const data = await res.json();
+        hostIdx = idx;
+        apiCache.set(path, { t: Date.now(), data });
+        return data;
+      } catch (e) { lastErr = e; if (e.stop) break; }
+    }
+    throw lastErr;
+  })();
+  apiInflight.set(path, p);
+  try { return await p; } finally { apiInflight.delete(path); }
+}
+
+/* ================= Helpers ================= */
+const fmtUsd = (v, min = 2, max = 2) => '$' + v.toLocaleString(undefined, { minimumFractionDigits: min, maximumFractionDigits: max });
+const fmtPrice = v => v >= 1 ? fmtUsd(v, 2, 6) : '$' + v.toPrecision(4);
+function formatTimeLabel(date, tf) {
+  return tf === '7d' ? `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`
+    : `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().substr(-2)}`;
+}
+function chartOptions() {
+  return { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false }, ticks: { color: '#8a8d9b', maxTicksLimit: 6 } }, y: { grid: { color: '#272a36' }, ticks: { color: '#8a8d9b' } } } };
+}
+
+/* ================= Portfolio performance (logic unchanged, now budget-aware) ================= */
+function initChart() {
+  chartInstance = new Chart(document.getElementById('portfolioChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Portfolio Value (USD)', data: [], borderColor: '#00d26a', backgroundColor: 'rgba(0,210,106,0.08)', fill: true, tension: 0.2, borderWidth: 2, pointRadius: 0 }] },
+    options: chartOptions()
+  });
+}
+function setTimeframe(tf, btn) {
+  activeTimeframe = tf;
+  document.querySelectorAll('.timeframe-container:not(#intervalBar) .tf-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  updateHistoricalChart();
+}
+let histRun = 0;
+async function updateHistoricalChart() {
+  const run = ++histRun;
+  if (holdings.length === 0) { chartInstance.data.labels = []; chartInstance.data.datasets[0].data = []; chartInstance.update(); return; }
+  const config = TIMEFRAME_CONFIGS[activeTimeframe] || TIMEFRAME_CONFIGS['30d'];
+  let combined = [], labels = [], failed = false;
+  for (const h of holdings) {
+    try {
+      const klines = await api(`/api/v3/klines?symbol=${h.pair}&interval=${config.interval}&limit=${config.limit}`, 2, 120000);
+      if (!Array.isArray(klines)) throw new Error('bad data');
+      if (combined.length === 0) combined = new Array(klines.length).fill(0);
+      klines.forEach((c, i) => {
+        if (i < combined.length) combined[i] += parseFloat(c[4]) * h.amount;
+        if (labels.length < klines.length) labels.push(formatTimeLabel(new Date(c[0]), activeTimeframe));
+      });
+    } catch (e) { failed = true; }
+  }
+  if (run !== histRun || (failed && chartInstance.data.datasets[0].data.length)) return; // keep last good chart
+  chartInstance.data.labels = labels; chartInstance.data.datasets[0].data = combined; chartInstance.update();
+}
+
+/* ================= Live candlestick chart ================= */
+const INTERVALS = [['1m', '1m'], ['5m', '5m'], ['15m', '15m'], ['1h', '1h'], ['4h', '4h'], ['1d', '1D'], ['1w', '1W']];
+let candleInterval = localStorage.getItem(INTERVAL_KEY);
+if (!INTERVALS.some(i => i[0] === candleInterval)) candleInterval = '15m';
+let lw = null, candles = [], assetToken = 0, ws = null, wsRetry = 0, wsTimer = null, pollTimer = null, loadingOlder = false, noMore = false, olderWait = 0;
+
+function buildIntervalBar() {
+  const bar = document.getElementById('intervalBar');
+  bar.innerHTML = '';
+  INTERVALS.forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'tf-btn' + (k === candleInterval ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => setCandleInterval(k);
+    bar.appendChild(b);
+  });
+}
+function initLW() {
+  const el = document.getElementById('candleChart');
+  const chart = LightweightCharts.createChart(el, {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: '#1a1c23' }, textColor: '#8a8d9b', fontSize: 11 },
+    grid: { vertLines: { color: '#20232e' }, horzLines: { color: '#272a36' } },
+    rightPriceScale: { borderColor: '#272a36', scaleMargins: { top: 0.08, bottom: 0.25 } },
+    timeScale: { borderColor: '#272a36', timeVisible: true, secondsVisible: false, rightOffset: 4,
+      tickMarkFormatter: (t, type) => {
+        const d = new Date(t * 1000);
+        if (type === 0) return String(d.getFullYear());
+        if (type === 1) return d.toLocaleDateString([], { month: 'short' });
+        if (type === 2) return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } },
+    localization: { timeFormatter: t => new Date(t * 1000).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) },
+    handleScroll: { vertTouchDrag: false },              // lets you scroll the page when swiping over the chart on a phone
+    handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
+  });
+  const candle = chart.addCandlestickSeries({ upColor: '#00d26a', downColor: '#f8312f', borderVisible: false, wickUpColor: '#00d26a', wickDownColor: '#f8312f' });
+  const vol = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: '', lastValueVisible: false, priceLineVisible: false });
+  vol.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+  chart.subscribeCrosshairMove(p => {
+    const d = p.time && p.seriesData.get(candle);
+    const v = p.time && p.seriesData.get(vol);
+    showLegend(d || candles[candles.length - 1], v ? v.value : (candles.length ? candles[candles.length - 1].volume : 0));
+  });
+  chart.timeScale().subscribeVisibleLogicalRangeChange(r => { if (r && r.from < 15) loadOlder(); });
+  lw = { chart, candle, vol };
+}
+function showLegend(c, v) {
+  const el = document.getElementById('candleLegend');
+  if (!c) { el.textContent = ''; return; }
+  const chg = ((c.close - c.open) / c.open) * 100, col = chg >= 0 ? '#00d26a' : '#f8312f', f = x => (+x).toPrecision(6).replace(/\.?0+$/, '');
+  el.innerHTML = `O ${f(c.open)}  H ${f(c.high)}  L ${f(c.low)}  C ${f(c.close)}  <span style="color:${col}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>  Vol ${(+v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+function precisionFor(p) { return p >= 100 ? 2 : p >= 1 ? 3 : p >= 0.1 ? 4 : p >= 0.01 ? 5 : p >= 0.001 ? 6 : 8; }
+const volColor = c => c.close >= c.open ? 'rgba(0,210,106,.35)' : 'rgba(248,49,47,.35)';
+function paint(resetView) {
+  if (!lw) return;
+  lw.candle.setData(candles.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+  lw.vol.setData(candles.map(c => ({ time: c.time, value: c.volume, color: volColor(c) })));
+  if (!candles.length) return;
+  const last = candles[candles.length - 1], pr = precisionFor(last.close);
+  lw.candle.applyOptions({ priceFormat: { type: 'price', precision: pr, minMove: Math.pow(10, -pr) } });
+  if (resetView) lw.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, candles.length - 90), to: candles.length + 4 });
+  showLegend(last, last.volume); setLivePrice(last.close);
+}
+async function fetchKlines(pair, interval, limit, endTime) {
+  const path = `/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}` + (endTime ? `&endTime=${endTime}` : '');
+  const rows = await api(path, 2, endTime ? 300000 : 10000);
+  if (!Array.isArray(rows)) throw new Error('bad data');
+  return rows.map(k => ({ time: Math.floor(k[0] / 1000), open: +k[1], high: +k[2], low: +k[3], close: +k[4], volume: +k[5] }));
+}
+function setMsg(t) { const m = document.getElementById('candleMsg'); m.textContent = t || ''; }
+async function loadCandles(token, attempt = 0) {
+  setMsg('Loading candles...');
+  try {
+    const rows = await fetchKlines(openAsset.pair, candleInterval, 1000);
+    if (token !== assetToken) return;
+    candles = rows; noMore = false; setMsg(''); paint(true); connectWS();
+  } catch (e) {
+    if (token !== assetToken) return;
+    setMsg(attempt < 5 ? 'Waiting for market data... retrying' : 'Could not load candles. Tap an interval to retry.');
+    if (attempt < 5) setTimeout(() => token === assetToken && loadCandles(token, attempt + 1), 4000 + attempt * 3000);
+  }
+}
+async function loadOlder() {                             // scroll left for more history, 1000 candles per call
+  if (loadingOlder || noMore || !candles.length || Date.now() < olderWait || candles.length > 30000) return;
+  loadingOlder = true;
+  const token = assetToken;
+  try {
+    const rows = await fetchKlines(openAsset.pair, candleInterval, 1000, candles[0].time * 1000 - 1);
+    if (token !== assetToken) return;
+    if (!rows.length) noMore = true; else { candles = rows.concat(candles); paint(false); }
+  } catch (e) { olderWait = Date.now() + 5000; }
+  finally { loadingOlder = false; }
+}
+function mergeCandle(c) {
+  const last = candles[candles.length - 1];
+  if (last && c.time < last.time) return;
+  if (last && last.time === c.time) candles[candles.length - 1] = c; else candles.push(c);
+  lw.candle.update({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close });
+  lw.vol.update({ time: c.time, value: c.volume, color: volColor(c) });
+  setLivePrice(c.close);
+  priceMap[openAsset.pair] = c.close; refreshNumbersSoon();
+}
+function setLivePrice(p) {
+  const el = document.getElementById('livePrice');
+  const prev = parseFloat(el.dataset.p || p);
+  el.dataset.p = p; el.textContent = fmtPrice(p);
+  el.style.color = p > prev ? '#00d26a' : p < prev ? '#f8312f' : '';
+}
+function setLive(on, text) {
+  document.getElementById('liveBadge').classList.toggle('on', on);
+  document.getElementById('liveText').textContent = text;
+}
+/* Live updates: WebSocket costs no API weight. If it can't connect, fall back to light polling. */
+function closeWS() { clearTimeout(wsTimer); if (ws) { ws.onclose = ws.onmessage = ws.onerror = ws.onopen = null; try { ws.close(); } catch (e) {} ws = null; } }
+function stopPoll() { clearInterval(pollTimer); pollTimer = null; }
+function startPoll(token) {
+  if (pollTimer) return;
+  setLive(false, 'polling');
+  pollTimer = setInterval(async () => {
+    if (token !== assetToken || document.hidden) return;
+    try { (await fetchKlines(openAsset.pair, candleInterval, 2)).forEach(mergeCandle); } catch (e) {}
+  }, 15000);
+}
+function connectWS() {
+  closeWS();
+  if (!openAsset || document.hidden || !lw) return;
+  const token = assetToken, pair = openAsset.pair, iv = candleInterval;
+  let sock;
+  try { sock = new WebSocket(`${WS_HOSTS[wsRetry % WS_HOSTS.length]}/ws/${pair.toLowerCase()}@kline_${iv}`); }
+  catch (e) { startPoll(token); return; }
+  ws = sock;
+  sock.onopen = () => { wsRetry = 0; stopPoll(); setLive(true, 'live'); fillGap(token); };
+  sock.onmessage = ev => {
+    if (token !== assetToken) return;
+    try {
+      const k = JSON.parse(ev.data).k;
+      if (k) mergeCandle({ time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v });
+    } catch (e) {}
+  };
+  sock.onclose = () => {
+    if (token !== assetToken || ws !== sock) return;
+    ws = null; setLive(false, 'reconnecting'); wsRetry++;
+    if (wsRetry >= 2) startPoll(token);
+    wsTimer = setTimeout(connectWS, Math.min(30000, 1000 * Math.pow(2, wsRetry)));
+  };
+  sock.onerror = () => { try { sock.close(); } catch (e) {} };
+}
+async function fillGap(token) {                          // after a reconnect / returning to the app, patch missed candles
+  const last = candles[candles.length - 1];
+  if (!last || Date.now() / 1000 - last.time < 120) return;
+  try { const rows = await fetchKlines(openAsset.pair, candleInterval, 300); if (token === assetToken) rows.forEach(mergeCandle); } catch (e) {}
+}
+function setCandleInterval(k) {
+  candleInterval = k; localStorage.setItem(INTERVAL_KEY, k);
+  buildIntervalBar();
+  if (!openAsset) return;
+  assetToken++; closeWS(); stopPoll(); candles = []; noMore = false; wsRetry = 0;
+  if (lw) paint(false);
+  setLive(false, 'connecting');
+  loadCandles(assetToken);
+}
+function showAssetChart(index) {
+  const h = holdings[index]; if (!h) return;
+  openAsset = h; assetToken++; closeWS(); stopPoll(); candles = []; noMore = false; wsRetry = 0;
+  document.getElementById('assetChartTitle').innerText = `${h.symbol} / USDT`;
+  document.getElementById('livePrice').dataset.p = '';
+  document.getElementById('livePrice').textContent = priceMap[h.pair] ? fmtPrice(priceMap[h.pair]) : '–';
+  document.getElementById('assetChartCard').classList.remove('hidden');
+  buildIntervalBar();
+  if (!lw) initLW();
+  paint(false); showLegend(null);
+  setLive(false, 'connecting'); updateAssetMeta();
+  document.querySelectorAll('.holding-item').forEach((el, i) => el.classList.toggle('active', i === index));
+  document.getElementById('assetChartCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  loadCandles(assetToken);
+}
+function hideAssetChart() {
+  openAsset = null; assetToken++; closeWS(); stopPoll(); candles = [];
+  document.getElementById('assetChartCard').classList.add('hidden');
+  document.querySelectorAll('.holding-item').forEach(el => el.classList.remove('active'));
+}
+function updateAssetMeta() {
+  if (!openAsset) return;
+  const v = (priceMap[openAsset.pair] || 0) * openAsset.amount;
+  document.getElementById('assetChartMeta').innerText = `Holding: ${openAsset.amount} ${openAsset.symbol} · ${fmtUsd(v)}`;
+}
+
+/* ================= Holdings ================= */
+let rowRefs = [], refreshT = null;
+function renderHoldings() {
+  const box = document.getElementById('holdingsList');
+  box.innerHTML = ''; rowRefs = [];
+  document.getElementById('assetCount').innerText = `${holdings.length} ${holdings.length === 1 ? 'asset' : 'assets'}`;
+  if (!holdings.length) {
+    box.innerHTML = '<div class="empty-state">No coins yet.<br>Search for a coin above and enter how much you hold.</div>';
+    document.getElementById('totalValue').innerText = '$0.00';
+    return;
+  }
+  holdings.forEach((item, index) => {
+    const el = document.createElement('div');
+    el.className = 'holding-item' + (openAsset && openAsset.pair === item.pair ? ' active' : '');
+    el.innerHTML = `
+      <div class="coin-info"><span class="coin-name">${item.symbol}</span><span class="coin-amount">${item.amount} ${item.symbol}</span></div>
+      <div style="display:flex;align-items:center">
+        <div class="coin-value-group"><div class="coin-total"></div><div class="coin-price"></div></div>
+        <div class="action-btns">
+          <button class="btn-action btn-edit" title="Edit amount">✏️</button>
+          <button class="btn-action btn-delete" title="Delete">✕</button>
+        </div>
+      </div>`;
+    el.querySelector('.btn-edit').onclick = e => { e.stopPropagation(); editHolding(index); };
+    el.querySelector('.btn-delete').onclick = e => { e.stopPropagation(); deleteHolding(index); };
+    el.addEventListener('click', () => showAssetChart(index));
+    box.appendChild(el);
+    rowRefs.push({ total: el.querySelector('.coin-total'), price: el.querySelector('.coin-price') });
+  });
+  refreshNumbers();
+}
+function refreshNumbers() {                              // updates numbers in place, so live ticks never rebuild the list
+  let grand = 0;
+  holdings.forEach((h, i) => {
+    const p = priceMap[h.pair] || 0, v = h.amount * p; grand += v;
+    if (rowRefs[i]) { rowRefs[i].total.textContent = fmtUsd(v); rowRefs[i].price.textContent = fmtUsd(p, 2, 6); }
+  });
+  if (holdings.length) document.getElementById('totalValue').innerText = fmtUsd(grand);
+  updateAssetMeta();
+}
+function refreshNumbersSoon() { if (!refreshT) refreshT = setTimeout(() => { refreshT = null; refreshNumbers(); }, 1000); }
+
+function addHolding() {
+  const val = document.getElementById('coinSearch').value.trim();
+  const amountInput = document.getElementById('coinAmount');
+  const amount = parseFloat(amountInput.value);
+  if (!val || !amount || amount <= 0) { alert('Please select a valid coin and enter a positive amount.'); return; }
+  const sym = val.replace(' (USDT)', '').toUpperCase();
+  const m = availablePairs.find(p => p.symbol === sym);
+  if (!m) { alert('Coin not found. Pick a symbol from the search list.'); return; }
+  const ex = holdings.findIndex(h => h.pair === m.pair);
+  if (ex > -1) holdings[ex].amount += amount; else holdings.push({ symbol: m.symbol, pair: m.pair, amount });
+  saveHoldings();
+  document.getElementById('coinSearch').value = ''; amountInput.value = '';
+  renderHoldings(); fetchLiveCoinsAndPrices();
+}
+function editHolding(index) {
+  const item = holdings[index];
+  const s = prompt(`Update amount for ${item.symbol}:`, item.amount);
+  if (s === null) return;
+  const n = parseFloat(s);
+  if (!isNaN(n) && n > 0) { item.amount = n; saveHoldings(); renderHoldings(); updateHistoricalChart(); }
+  else if (n === 0) deleteHolding(index);
+  else alert('Please enter a valid positive number.');
+}
+function deleteHolding(index) {
+  const removed = holdings[index];
+  holdings.splice(index, 1);
+  if (openAsset && openAsset.pair === removed.pair) hideAssetChart();
+  saveHoldings(); renderHoldings(); updateHistoricalChart();
+}
+
+/* ================= Prices ================= */
+async function fetchLiveCoinsAndPrices() {
+  const dot = document.getElementById('statusDot'), txt = document.getElementById('statusText');
+  dot.style.backgroundColor = '#f1c40f'; txt.innerText = 'Updating prices...';
+  try {
+    const data = await api('/api/v3/ticker/price', 4, 5000);
+    if (!Array.isArray(data)) throw new Error('bad data');
+    data.forEach(i => { priceMap[i.symbol] = parseFloat(i.price); });
+    if (!availablePairs.length) {
+      availablePairs = data.filter(i => i.symbol.endsWith('USDT')).map(i => ({ pair: i.symbol, symbol: i.symbol.replace(/USDT$/, '') })).sort((a, b) => a.symbol.localeCompare(b.symbol));
+      const dl = document.getElementById('coinDatalist');
+      availablePairs.forEach(c => { const o = document.createElement('option'); o.value = `${c.symbol} (USDT)`; dl.appendChild(o); });
+    }
+    const mine = {}; holdings.forEach(h => { if (priceMap[h.pair]) mine[h.pair] = priceMap[h.pair]; });
+    localStorage.setItem(PRICES_KEY, JSON.stringify(mine));
+    dot.style.backgroundColor = 'var(--accent-green)';
+    txt.innerText = `Updated at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    refreshNumbers(); updateHistoricalChart();
+  } catch (e) {
+    dot.style.backgroundColor = 'var(--accent-red)';
+    txt.innerText = navigator.onLine ? 'Fetch failed (auto-retrying)' : 'Offline (showing last prices)';
+  }
+  updateMeter();
+}
+
+/* ================= Start-up, lifecycle, install ================= */
+initChart();
+renderHoldings();
+fetchLiveCoinsAndPrices();
+setInterval(() => { if (!document.hidden) fetchLiveCoinsAndPrices(); }, 30000);
+setInterval(updateMeter, 5000);
+document.addEventListener('visibilitychange', () => {   // save battery & data: no live socket while the app is in the background
+  if (document.hidden) { closeWS(); stopPoll(); }
+  else { fetchLiveCoinsAndPrices(); if (openAsset && candles.length) { wsRetry = 0; connectWS(); } }
+});
+window.addEventListener('online', fetchLiveCoinsAndPrices);
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; document.getElementById('installBtn').classList.remove('hidden'); });
+document.getElementById('installBtn').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; document.getElementById('installBtn').classList.add('hidden'); };
+window.addEventListener('appinstalled', () => document.getElementById('installBtn').classList.add('hidden'));
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) document.getElementById('iosHint').classList.remove('hidden');
+</script>
+</body>
+</html>
